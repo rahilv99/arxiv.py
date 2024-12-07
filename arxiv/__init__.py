@@ -84,7 +84,7 @@ class Result(object):
         primary_category: str = "",
         categories: List[str] = [],
         links: List[Link] = [],
-        _raw: feedparser.FeedParserDict = None,
+        _raw: feedparser.FeedParserDict = None
     ):
         """
         Constructs an arXiv search result item.
@@ -441,6 +441,7 @@ class Search(object):
         max_results: int | None = None,
         sort_by: SortCriterion = SortCriterion.Relevance,
         sort_order: SortOrder = SortOrder.Descending,
+        start_date: Optional[datetime] = None,
     ):
         """
         Constructs an arXiv API search with the specified criteria.
@@ -450,7 +451,8 @@ class Search(object):
         # Handle deprecated v1 default behavior.
         self.max_results = None if max_results == math.inf else max_results
         self.sort_by = sort_by
-        self.sort_order = sort_order
+        self.sort_order = sort_order,
+        self.start_date = start_date
 
     def __str__(self) -> str:
         # TODO: develop a more informative string representation.
@@ -471,12 +473,23 @@ class Search(object):
         Returns a dict of search parameters that should be included in an API
         request for this search.
         """
-        return {
+
+        url_args = {
             "search_query": self.query,
-            "id_list": ",".join(self.id_list),
+            "max_results": self.max_results or 50,
             "sortBy": self.sort_by.value,
             "sortOrder": self.sort_order.value,
         }
+
+        if self.start_date:
+            # Add additional parameters for date filtering
+            url_args.update({
+                "date-filter_by": "date_range",
+                "date-year": "",
+                "date-from_date": self.start_date.strftime('%Y-%m-%d'),
+                "date-date_type": "submitted_date"
+            })
+        return url_args
 
     def results(self, offset: int = 0) -> Generator[Result, None, None]:
         """
